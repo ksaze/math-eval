@@ -1,0 +1,7 @@
+# compiled binaries
+eval
+
+log.txt
+obj/
+.cache/
+compile_commands.json
