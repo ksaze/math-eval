@@ -1,7 +1,9 @@
-# compiled binaries
+# build resources
 eval
-
 log.txt
-obj/
+build/
+vgcore.*
+
+# editor resources
 .cache/
 compile_commands.json
