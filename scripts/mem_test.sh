@@ -9,6 +9,7 @@ inputs=(
   "1 + (2 * 3)"
   "invalid input"
   "999 / 3 - 1"
+  "-sin + 2 / log"
 )
 
 status=1 # binary true

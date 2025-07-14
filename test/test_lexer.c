@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include <criterion/criterion.h>
+#include <criterion/internal/assert.h>
 #include <criterion/internal/test.h>
 #include <criterion/logging.h>
 #include <criterion/redirect.h>
@@ -44,8 +45,8 @@ Test(lexer_basic, test_operators, .init = redirect_all_output) {
 
   cr_assert_not_null(tokens);
 
-  tokenType expected[] = {TOKEN_PLUS,       TOKEN_MINUS, TOKEN_MUL,
-                          TOKEN_DIV,        TOKEN_EXP,   TOKEN_OPENPAREN,
+  tokenType expected[] = {TOKEN_PLUS,       TOKEN_UNARY_MINUS, TOKEN_MUL,
+                          TOKEN_DIV,        TOKEN_EXP,         TOKEN_OPENPAREN,
                           TOKEN_CLOSEPAREN, TOKEN_EOF};
 
   for (int i = 0; i < 8; i++) {
@@ -133,14 +134,16 @@ Test(lexer_whitespace, test_only_whitespace, .init = redirect_all_output) {
 TestSuite(lexer_complex, .description = "Complex expression tests");
 
 Test(lexer_complex, test_complex_expression, .init = redirect_all_output) {
-  token **tokens = tokenise("(3.14 + 2.71) * 42 / 7 - 1");
+  token **tokens = tokenise("(3.14 + 2.71) * 42 / 7 - 1 ^ log e cos sin90");
 
   cr_assert_not_null(tokens);
 
   tokenType expected[] = {TOKEN_OPENPAREN, TOKEN_NUMBER,     TOKEN_PLUS,
                           TOKEN_NUMBER,    TOKEN_CLOSEPAREN, TOKEN_MUL,
                           TOKEN_NUMBER,    TOKEN_DIV,        TOKEN_NUMBER,
-                          TOKEN_MINUS,     TOKEN_NUMBER,     TOKEN_EOF};
+                          TOKEN_MINUS,     TOKEN_NUMBER,     TOKEN_EXP,
+                          TOKEN_LOG,       TOKEN_SCI_EXP,    TOKEN_COS,
+                          TOKEN_SIN,       TOKEN_NUMBER,     TOKEN_EOF};
 
   int expected_count = sizeof(expected) / sizeof(expected[0]);
 
@@ -153,14 +156,15 @@ Test(lexer_complex, test_complex_expression, .init = redirect_all_output) {
 }
 
 Test(lexer_complex, test_consecutive_operators, .init = redirect_all_output) {
-  token **tokens = tokenise("++--");
+  token **tokens = tokenise("++-log-");
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0]->type, TOKEN_PLUS);
   cr_assert_eq(tokens[1]->type, TOKEN_PLUS);
-  cr_assert_eq(tokens[2]->type, TOKEN_MINUS);
-  cr_assert_eq(tokens[3]->type, TOKEN_MINUS);
-  cr_assert_eq(tokens[4]->type, TOKEN_EOF);
+  cr_assert_eq(tokens[2]->type, TOKEN_UNARY_MINUS);
+  cr_assert_eq(tokens[3]->type, TOKEN_LOG);
+  cr_assert_eq(tokens[4]->type, TOKEN_MINUS);
+  cr_assert_eq(tokens[5]->type, TOKEN_EOF);
 
   freeTokenList(tokens);
 }
