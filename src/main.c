@@ -8,12 +8,11 @@ int main(int argc, char **argv) {
   }
 
   const char *input = argv[1];
-  token **tokenList = tokenise(input);
+  token *tokenList = tokenise(input);
   if (!tokenList) {
     return -1;
   }
 
   printf("Succesful");
-  freeTokenList(tokenList);
   return 0;
 }

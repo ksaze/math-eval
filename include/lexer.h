@@ -45,11 +45,11 @@ typedef struct token {
 } token;
 
 typedef struct lexer {
-  const char *input;
-  size_t current;
+  const char *const start;
+  const char *current;
+  tokenType previousTokenType;
 } lexer;
 
-int freeTokenList(token **tokens);
-token **tokenise(const char *input);
+token *tokenise(const char *input);
 
 #endif
