@@ -15,7 +15,7 @@ void redirect_all_output(void) {
 TestSuite(lexer_basic, .description = "Basic lexer tokenization tests");
 
 Test(lexer_basic, test_number_tokens, .init = redirect_all_output) {
-  token *tokens = tokenise("123");
+  token *tokens = tokenise("123")->stream;
 
   cr_assert_not_null(tokens, "Tokenization should not return NULL");
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER, "First token should be NUMBER");
@@ -29,7 +29,7 @@ Test(lexer_basic, test_number_tokens, .init = redirect_all_output) {
 }
 
 Test(lexer_basic, test_decimal_numbers, .init = redirect_all_output) {
-  token *tokens = tokenise("3.14");
+  token *tokens = tokenise("3.14")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER);
@@ -41,7 +41,7 @@ Test(lexer_basic, test_decimal_numbers, .init = redirect_all_output) {
 }
 
 Test(lexer_basic, test_operators, .init = redirect_all_output) {
-  token *tokens = tokenise("+-*/^()");
+  token *tokens = tokenise("+-*/^()")->stream;
 
   cr_assert_not_null(tokens);
 
@@ -64,25 +64,25 @@ TestSuite(lexer_errors, .description = "Error handling tests",
           .init = redirect_all_output);
 
 Test(lexer_errors, test_invalid_decimal, .init = redirect_all_output) {
-  token *tokens = tokenise("3.14.5");
-  cr_assert_null(tokens, "Invalid decimal should return NULL");
+  tokenStream *tknStream = tokenise("3.14.5");
+  cr_assert_null(tknStream, "Invalid decimal should return NULL");
 }
 
 Test(lexer_errors, test_trailing_decimal, .init = redirect_all_output) {
-  token *tokens = tokenise("3.");
-  cr_assert_null(tokens, "Trailing decimal should return NULL");
+  tokenStream *tknStream = tokenise("3.");
+  cr_assert_null(tknStream, "Trailing decimal should return NULL");
 }
 
 Test(lexer_errors, test_invalid_characters, .init = redirect_all_output) {
-  token *tokens = tokenise("123 @ 456");
-  cr_assert_null(tokens, "Invalid characters should return NULL");
+  tokenStream *tknStream = tokenise("123 @ 456");
+  cr_assert_null(tknStream, "Invalid characters should return NULL");
 }
 
 // Test suite for whitespace handling
 TestSuite(lexer_whitespace, .description = "Whitespace handling tests");
 
 Test(lexer_whitespace, test_whitespace_skipping, .init = redirect_all_output) {
-  token *tokens = tokenise("  123   +   456  ");
+  token *tokens = tokenise("  123   +   456  ")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER);
@@ -97,7 +97,7 @@ Test(lexer_whitespace, test_whitespace_skipping, .init = redirect_all_output) {
 
 Test(lexer_whitespace, test_different_whitespace_types,
      .init = redirect_all_output) {
-  token *tokens = tokenise("1\t+\n2\r*\n3");
+  token *tokens = tokenise("1\t+\n2\r*\n3")->stream;
 
   cr_assert_not_null(tokens);
 
@@ -112,7 +112,7 @@ Test(lexer_whitespace, test_different_whitespace_types,
 }
 
 Test(lexer_whitespace, test_empty_input, .init = redirect_all_output) {
-  token *tokens = tokenise("");
+  token *tokens = tokenise("")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_EOF);
@@ -122,7 +122,7 @@ Test(lexer_whitespace, test_empty_input, .init = redirect_all_output) {
 }
 
 Test(lexer_whitespace, test_only_whitespace, .init = redirect_all_output) {
-  token *tokens = tokenise("   \t\n\r  ");
+  token *tokens = tokenise("   \t\n\r  ")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_EOF);
@@ -134,16 +134,16 @@ Test(lexer_whitespace, test_only_whitespace, .init = redirect_all_output) {
 TestSuite(lexer_complex, .description = "Complex expression tests");
 
 Test(lexer_complex, test_complex_expression, .init = redirect_all_output) {
-  token *tokens = tokenise("(3.14 + 2.71) * 42 / 7 - 1 ^ log e cos sin90");
+  token *tokens =
+      tokenise("(3.14 + 2.71e21) * 42 / 7 - 1 ^ log cos sin90")->stream;
 
   cr_assert_not_null(tokens);
 
-  tokenType expected[] = {TOKEN_OPENPAREN, TOKEN_NUMBER,     TOKEN_PLUS,
-                          TOKEN_NUMBER,    TOKEN_CLOSEPAREN, TOKEN_MUL,
-                          TOKEN_NUMBER,    TOKEN_DIV,        TOKEN_NUMBER,
-                          TOKEN_MINUS,     TOKEN_NUMBER,     TOKEN_EXP,
-                          TOKEN_LOG,       TOKEN_SCI_EXP,    TOKEN_COS,
-                          TOKEN_SIN,       TOKEN_NUMBER,     TOKEN_EOF};
+  tokenType expected[] = {
+      TOKEN_OPENPAREN, TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_CLOSEPAREN,
+      TOKEN_MUL,       TOKEN_NUMBER, TOKEN_DIV,  TOKEN_NUMBER, TOKEN_MINUS,
+      TOKEN_NUMBER,    TOKEN_EXP,    TOKEN_LOG,  TOKEN_COS,    TOKEN_SIN,
+      TOKEN_NUMBER,    TOKEN_EOF};
 
   int expected_count = sizeof(expected) / sizeof(expected[0]);
 
@@ -156,7 +156,7 @@ Test(lexer_complex, test_complex_expression, .init = redirect_all_output) {
 }
 
 Test(lexer_complex, test_consecutive_operators, .init = redirect_all_output) {
-  token *tokens = tokenise("++-log-");
+  token *tokens = tokenise("++-log-")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_PLUS);
@@ -173,7 +173,7 @@ Test(lexer_complex, test_consecutive_operators, .init = redirect_all_output) {
 TestSuite(lexer_edge_cases, .description = "Edge case tests");
 
 Test(lexer_edge_cases, test_single_digit, .init = redirect_all_output) {
-  token *tokens = tokenise("0");
+  token *tokens = tokenise("0")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER);
@@ -184,7 +184,7 @@ Test(lexer_edge_cases, test_single_digit, .init = redirect_all_output) {
 }
 
 Test(lexer_edge_cases, test_zero_decimal, .init = redirect_all_output) {
-  token *tokens = tokenise("0.0");
+  token *tokens = tokenise("0.0")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER);
@@ -195,7 +195,7 @@ Test(lexer_edge_cases, test_zero_decimal, .init = redirect_all_output) {
 }
 
 Test(lexer_edge_cases, test_long_number, .init = redirect_all_output) {
-  token *tokens = tokenise("123456789");
+  token *tokens = tokenise("123456789")->stream;
 
   cr_assert_not_null(tokens);
   cr_assert_eq(tokens[0].type, TOKEN_NUMBER);
@@ -208,7 +208,7 @@ Test(lexer_edge_cases, test_long_number, .init = redirect_all_output) {
 // Test with fixtures for setup/teardown
 static token *test_tokens;
 
-void setup_complex_tokens(void) { test_tokens = tokenise("1 + 2 * 3"); }
+void setup_complex_tokens(void) { test_tokens = tokenise("1 + 2 * 3")->stream; }
 
 void teardown_complex_tokens(void) {
   if (test_tokens) {

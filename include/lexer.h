@@ -18,7 +18,6 @@ enum {
   TOKEN_MUL,
   TOKEN_DIV,
   TOKEN_EXP,
-  TOKEN_SCI_EXP,
 
   TOKEN_OPENPAREN,
   TOKEN_CLOSEPAREN,
@@ -28,21 +27,19 @@ enum {
   TOKEN_SIN,
   TOKEN_COS,
   TOKEN_LOG,
-};
-
-typedef int tokenErrorCode;
-enum {
-  NONE,
-  INVALID_NUMBER_FORMAT,
-  INVALID_OPERATOR,
+  TOKEN_MAX,
 };
 
 typedef struct token {
   tokenType type;
   substring lexeme;
   size_t pos;
-  tokenErrorCode errCode;
 } token;
+
+typedef struct tokenStream {
+  token *stream;
+  size_t count;
+} tokenStream;
 
 typedef struct lexer {
   const char *const start;
@@ -50,6 +47,6 @@ typedef struct lexer {
   tokenType previousTokenType;
 } lexer;
 
-token *tokenise(const char *input);
+tokenStream *tokenise(const char *input);
 
 #endif
