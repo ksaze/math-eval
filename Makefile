@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Iinclude -Wextra -pedantic -std=c11
-LDFLAGS = -lcriterion
+LDFLAGS = -lm
 
 SRC_DIR = src
 TEST_DIR = test
@@ -32,7 +32,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 
 # Final executable
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@
+	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 # Compile test binaries without main.o
 $(BIN_DIR)/%: $(TEST_DIR)/%.c $(OBJS_NO_MAIN) | $(BIN_DIR)

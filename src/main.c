@@ -1,4 +1,5 @@
 #include "ds.h"
+#include "eval.h"
 #include "lexer.h"
 #include "parser.h"
 #include <stdio.h>
@@ -33,10 +34,11 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  double result = eval(root);
+  printf("%.15g\n", result);
+
   free(tknStream->stream);
   free(tknStream);
   memPool_free(&psr.nodePool);
-
-  printf("Succesful");
   return 0;
 }

@@ -1,5 +1,5 @@
 ## Math Expression Evaluator
-### Version: alpha (not functional yet)
+### Version: beta (Missing features)
 
 ### Goals 
 - Unary negative and binary operations addition, subtraction, multiplication, division and exponentiation
