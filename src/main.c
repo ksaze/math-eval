@@ -16,13 +16,22 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  parser psr = parserInit(tknStream);
+  parser psr = {0};
+  psr.currentToken = 0;
+  psr.tknStream = tknStream;
+
   if (!memPool_init(&psr.nodePool, tknStream->count)) {
     logError("Fatal: Memory allocation failure", "memPool_init");
     return -1;
   }
 
-  parserNode *root = parseExpression(&psr);
+  ASTNode *root = parseExpression(&psr);
+  if (!root) {
+    free(tknStream->stream);
+    free(tknStream);
+    memPool_free(&psr.nodePool);
+    return -1;
+  }
 
   free(tknStream->stream);
   free(tknStream);

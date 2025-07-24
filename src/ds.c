@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 bool memPool_init(memPool *pool, size_t capacity) {
-  pool->nodes = malloc(sizeof(parserNode) * capacity);
+  pool->nodes = malloc(sizeof(ASTNode) * capacity);
   if (!pool->nodes) {
     return false;
   }
@@ -13,7 +13,7 @@ bool memPool_init(memPool *pool, size_t capacity) {
   return true;
 }
 
-inline parserNode *memPool_alloc(memPool *pool) {
+inline ASTNode *memPool_alloc(memPool *pool) {
   return (pool->used >= pool->capacity) ? NULL : &pool->nodes[pool->used++];
 }
 

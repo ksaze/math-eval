@@ -14,36 +14,28 @@ enum {
   PRECEDENCE_MAX,
 };
 
-typedef struct parserNode {
+typedef struct ASTNode {
   tokenType type;
   size_t pos;
 
   union {
     double number;
     struct {
-      struct parserNode *operand;
+      struct ASTNode *operand;
     } unary;
     struct {
-      struct parserNode *left;
-      struct parserNode *right;
+      struct ASTNode *left;
+      struct ASTNode *right;
     } binary;
   };
-} parserNode;
+} ASTNode;
 
 typedef struct parser {
   memPool nodePool;
   size_t currentToken;
-  tokenStream *tokenStream;
+  tokenStream *tknStream;
 } parser;
 
-static inline parser parserInit(tokenStream *tokenStream) {
-  return (parser){
-      .nodePool = {0},
-      .currentToken = 0,
-      .tokenStream = tokenStream,
-  };
-}
-
-parserNode *parseExpression(parser *psr);
+ASTNode *parseExpression(parser *psr);
 
 #endif
