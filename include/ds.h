@@ -33,7 +33,7 @@ typedef struct hashMap {
 } hashMap;
 
 hashMap *hashMap_init(hashMap *map, size_t size);
-bool hashmap_setKey(hashMap *map, const substring *key, ASTNode *value);
+bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value);
 ASTNode *hashMap_getValue(const hashMap *map, const substring key);
 void hashMap_free(hashMap *map);
 

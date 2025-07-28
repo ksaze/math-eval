@@ -121,7 +121,8 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
   default:
     printf("Error code: %d", errno);
     snprintf(buffer, bufferSize,
-             "Invalid syntax: '%.*s' at index %zu is not a valid token\n",
+             "Found No Error Code: Application stopped while processing '%.*s' "
+             "at index %zu\n",
              (int)tkn->lexeme.len, tkn->lexeme.str, tkn->pos);
     break;
   }

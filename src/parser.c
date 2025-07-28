@@ -77,9 +77,16 @@ static bool assignIdentifier(parser *psr) {
   if (!value)
     return false;
 
-  hashmap_setKey(&psr->map, &key, value);
+  hashmap_setKey(&psr->map, key, value);
   parsingAssignment = false;
   return true;
+}
+
+static ASTNode *parseIdentifier(parser *psr) {
+  substring key = GET_CURRENT_TOKEN.lexeme;
+  ASTNode *ret = hashMap_getValue(&psr->map, key);
+  psr->currentToken++;
+  return ret;
 }
 
 static ASTNode *parsePrefixExpression(parser *psr) {
@@ -98,6 +105,10 @@ static ASTNode *parsePrefixExpression(parser *psr) {
 
   if (GET_CURRENT_TOKEN.type == TOKEN_NUMBER)
     ret = parseNumber(psr); // Returns NULL for UNDERFLOW and OVERFLOW
+  else if (GET_CURRENT_TOKEN.type == TOKEN_IDEN) {
+    ret = parseIdentifier(psr);
+  }
+
   else if (GET_CURRENT_TOKEN.type == TOKEN_OPENPAREN) {
     size_t openingParenthesisPosition = psr->currentToken;
     unmatchedParanthesisCount++;
@@ -177,6 +188,9 @@ ASTNode *parseExpression(parser *psr) {
 
   ASTNode *left;
 
+  // Multiple assignments might be present.
+  // Assignments don't have anything to expression structure.
+  // So keep processing until node besides assignment is returned.
   while (true) {
     left = parsePrefixExpression(psr);
 

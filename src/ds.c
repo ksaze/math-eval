@@ -35,23 +35,24 @@ void memPool_free(memPool *pool) {
 }
 
 /*--HASH MAP--*/
-static inline size_t hash(const char *key) {
-  int h = 5381;
+static inline size_t hash(substring key) {
+  size_t h = 5381;
   int c;
 
-  while ((c = *key++)) {
+  for (size_t i = 0; i < key.len; i++) {
+    c = key.str[i];
     h = ((h << 5) + h) + c;
   }
   return h;
 }
 
-static inline entry *entryInit(const substring *key, ASTNode *value) {
+static inline entry *entryInit(const substring key, ASTNode *value) {
   entry *e = malloc(sizeof(entry));
   if (!e)
     return NULL;
 
   *e = (entry){
-      .key = *key,
+      .key = key,
       .value = value,
       .next = NULL,
   };
@@ -65,12 +66,12 @@ hashMap *hashMap_init(hashMap *map, size_t size) {
   return map;
 }
 
-bool hashmap_setKey(hashMap *map, const substring *key, ASTNode *value) {
-  size_t idx = hash(key->str) % map->size;
+bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value) {
+  size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
   while (cur) {
-    if (substringCmp(cur->key, *key)) {
+    if (substringCmp(cur->key, key)) {
       cur->value = value;
       return true;
     }
@@ -87,7 +88,7 @@ bool hashmap_setKey(hashMap *map, const substring *key, ASTNode *value) {
 }
 
 ASTNode *hashMap_getValue(const hashMap *map, const substring key) {
-  size_t idx = hash(key.str) % map->size;
+  size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
   while (cur) {
