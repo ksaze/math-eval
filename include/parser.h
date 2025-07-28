@@ -34,6 +34,7 @@ typedef struct parser {
   memPool nodePool;
   size_t currentToken;
   tokenStream *tknStream;
+  hashMap map;
 } parser;
 
 ASTNode *parseExpression(parser *psr);

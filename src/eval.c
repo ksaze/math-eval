@@ -8,6 +8,8 @@ double eval(ASTNode *root) {
     return root->number;
   case TOKEN_UNARY_MINUS:
     return -eval(root->unary.operand);
+  case (TOKEN_UNARY_PLUS):
+    return eval(root->unary.operand);
   case TOKEN_PLUS:
     return eval(root->binary.left) + eval(root->binary.right);
   case TOKEN_MINUS:
@@ -25,6 +27,6 @@ double eval(ASTNode *root) {
   case TOKEN_LOG:
     return log10(eval(root->unary.operand));
   default:
-    return 0;
+    return nan("Invalid Token");
   }
 }

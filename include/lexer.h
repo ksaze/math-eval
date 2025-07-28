@@ -1,6 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include "ds.h"
 #include "util.h"
 #include <stddef.h>
 
@@ -12,6 +13,7 @@ enum {
   TOKEN_NUMBER,
 
   TOKEN_UNARY_MINUS,
+  TOKEN_UNARY_PLUS,
 
   TOKEN_PLUS,
   TOKEN_MINUS,
@@ -27,6 +29,10 @@ enum {
   TOKEN_SIN,
   TOKEN_COS,
   TOKEN_LOG,
+  TOKEN_INDICATOR,
+
+  TOKEN_ASSIGNMENT,
+
   TOKEN_MAX,
 };
 

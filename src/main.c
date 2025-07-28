@@ -21,7 +21,8 @@ int main(int argc, char **argv) {
   psr.currentToken = 0;
   psr.tknStream = tknStream;
 
-  if (!memPool_init(&psr.nodePool, tknStream->count)) {
+  if (!memPool_init(&psr.nodePool, tknStream->count) ||
+      !hashMap_init(&psr.map, (size_t)tknStream->count / 5)) {
     logError("Fatal: Memory allocation failure", "memPool_init");
     return -1;
   }
@@ -30,6 +31,7 @@ int main(int argc, char **argv) {
   if (!root) {
     free(tknStream->stream);
     free(tknStream);
+    hashMap_free(&psr.map);
     memPool_free(&psr.nodePool);
     return -1;
   }
@@ -39,6 +41,7 @@ int main(int argc, char **argv) {
 
   free(tknStream->stream);
   free(tknStream);
+  hashMap_free(&psr.map);
   memPool_free(&psr.nodePool);
   return 0;
 }

@@ -102,6 +102,22 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
              tkn->pos);
     break;
 
+  case INVALID_ASSIGNMENT_SYNTAX:
+    snprintf(buffer, bufferSize,
+             "Invalid Syntax: Invalid use of assignment operator at position "
+             "%zu. Ensure that all identifier declarations are of the form "
+             "(<iden> = <exp>)\n",
+             tkn->pos);
+    break;
+
+  case NESTED_ASSIGNMENT:
+    snprintf(
+        buffer, bufferSize,
+        "Nested Assignment: Invalid use of assignment operator at position "
+        "%zu. Can't declare identifiers inside an identifier definition.\n",
+        tkn->pos);
+    break;
+
   default:
     printf("Error code: %d", errno);
     snprintf(buffer, bufferSize,

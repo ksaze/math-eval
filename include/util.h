@@ -16,12 +16,9 @@ enum {
   MISSING_CLOSING_PARENTHESIS,
   UNMATCHED_CLOSING_PARENTHEIS,
   PREMATURE_END_OF_EXPRESSION,
+  INVALID_ASSIGNMENT_SYNTAX,
+  NESTED_ASSIGNMENT,
 };
-
-typedef struct substring {
-  char *str;
-  size_t len;
-} substring;
 
 void logError(const char *message, const char *functionName);
 void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn);

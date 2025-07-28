@@ -39,20 +39,6 @@ static inline void skipWhiteSpace(lexer *lxr) {
   }
 }
 
-static inline bool isBinaryOperatorContext(tokenType previousTokenType) {
-  switch (previousTokenType) {
-  case TOKEN_NUMBER:
-  case TOKEN_IDEN:
-  case TOKEN_CLOSEPAREN:
-  case TOKEN_LOG:
-  case TOKEN_SIN:
-  case TOKEN_COS:
-    return true;
-  default:
-    return false;
-  }
-}
-
 static inline bool tokenMatches(const char *tokenStart, const char *current,
                                 const char *target) {
   size_t len = current - tokenStart;
@@ -139,10 +125,7 @@ static token nextToken(lexer *lxr) {
     tkn = tokenInit(lxr, TOKEN_PLUS, tokenStart);
     break;
   case '-':
-    if (isBinaryOperatorContext(lxr->previousTokenType))
-      tkn = tokenInit(lxr, TOKEN_MINUS, tokenStart);
-    else
-      tkn = tokenInit(lxr, TOKEN_UNARY_MINUS, tokenStart);
+    tkn = tokenInit(lxr, TOKEN_MINUS, tokenStart);
     break;
   case '*':
     tkn = tokenInit(lxr, TOKEN_MUL, tokenStart);
@@ -159,8 +142,11 @@ static token nextToken(lexer *lxr) {
   case ')':
     tkn = tokenInit(lxr, TOKEN_CLOSEPAREN, tokenStart);
     break;
+  case '=':
+    tkn = tokenInit(lxr, TOKEN_ASSIGNMENT, tokenStart);
+    break;
 
-    // handles identifiers/constants, sin, cos, and tan
+  // handles identifiers/constants, sin, cos, and tan
   default:
     lxr->current--; // back to start of Lexeme
     if (!is_alpha(current)) {
