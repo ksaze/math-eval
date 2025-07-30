@@ -18,6 +18,7 @@ enum {
   PREMATURE_END_OF_EXPRESSION,
   INVALID_ASSIGNMENT_SYNTAX,
   NESTED_ASSIGNMENT,
+  UNKNOWN_IDENTIFIER,
 };
 
 void logError(const char *message, const char *functionName);

@@ -17,6 +17,7 @@ enum {
 typedef struct ASTNode {
   tokenType type;
   size_t pos;
+  substring identifer;
 
   union {
     double number;
@@ -33,6 +34,9 @@ typedef struct ASTNode {
 typedef struct parser {
   memPool nodePool;
   size_t currentToken;
+  int unmatchedParanthesisCount;
+  int recursionDepth;
+  bool parsingAssignment;
   tokenStream *tknStream;
   hashMap map;
 } parser;

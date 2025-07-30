@@ -117,7 +117,12 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
         "%zu. Can't declare identifiers inside an identifier definition.\n",
         tkn->pos);
     break;
-
+  case UNKNOWN_IDENTIFIER:
+    snprintf(buffer, bufferSize,
+             "Unknown Identifier: Found no definition for identifier '%.*s' at "
+             "position %zu.\n",
+             (int)tkn->lexeme.len, tkn->lexeme.str, tkn->pos);
+    break;
   default:
     printf("Error code: %d", errno);
     snprintf(buffer, bufferSize,

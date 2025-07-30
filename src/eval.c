@@ -26,6 +26,8 @@ double eval(ASTNode *root) {
     return cos(eval(root->unary.operand));
   case TOKEN_LOG:
     return log10(eval(root->unary.operand));
+  case TOKEN_IDEN:
+    return eval(root->unary.operand);
   default:
     return nan("Invalid Token");
   }

@@ -19,6 +19,8 @@ int main(int argc, char **argv) {
 
   parser psr = {0};
   psr.currentToken = 0;
+  psr.unmatchedParanthesisCount = 0;
+  psr.parsingAssignment = false;
   psr.tknStream = tknStream;
 
   if (!memPool_init(&psr.nodePool, tknStream->count) ||
@@ -38,6 +40,7 @@ int main(int argc, char **argv) {
 
   double result = eval(root);
   printf("%.15g\n", result);
+  // printf("%.15g\n", psr.nodePool.used / (double)psr.nodePool.capacity);
 
   free(tknStream->stream);
   free(tknStream);

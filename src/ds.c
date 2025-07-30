@@ -12,12 +12,12 @@ bool substringCmp(substring s1, substring s2) {
 
 /*--MEMORY POOl--*/
 bool memPool_init(memPool *pool, size_t capacity) {
-  pool->nodes = malloc(sizeof(ASTNode) * capacity);
+  pool->nodes = malloc(sizeof(ASTNode) * (capacity * 2));
   if (!pool->nodes) {
     return false;
   }
 
-  pool->capacity = capacity;
+  pool->capacity = capacity * 2;
   pool->used = 0;
   return true;
 }

@@ -13,9 +13,6 @@
 #define GET_CURRENT_TOKEN psr->tknStream->stream[psr->currentToken]
 #define GET_TOKEN(t) psr->tknStream->stream[t]
 
-int unmatchedParanthesisCount = 0;
-bool parsingAssignment = false;
-
 static precedence precedenceMap[TOKEN_MAX] = {
     [TOKEN_PLUS] = PRECEDENCE_TERM,     [TOKEN_MINUS] = PRECEDENCE_TERM,
     [TOKEN_MUL] = PRECEDENCE_FACTOR,    [TOKEN_DIV] = PRECEDENCE_FACTOR,
@@ -41,6 +38,54 @@ static inline void nodeInit(ASTNode *node, token tkn) {
   node->pos = tkn.pos;
 }
 
+static inline ASTNode *cloneAST(ASTNode *node, parser *psr) {
+  if (!node)
+    return NULL;
+
+  ASTNode *cloneNode = memPool_alloc(&psr->nodePool);
+  if (!cloneNode)
+    return NULL;
+
+  cloneNode->type = node->type;
+  cloneNode->pos = node->pos;
+
+  switch (node->type) {
+  case TOKEN_PLUS:
+  case TOKEN_MINUS:
+  case TOKEN_MUL:
+  case TOKEN_DIV:
+  case TOKEN_EXP:
+    cloneNode->binary.left = cloneAST(node->binary.left, psr);
+    cloneNode->binary.right = cloneAST(node->binary.right, psr);
+    if (!cloneNode->binary.left || !cloneNode->binary.right)
+      return NULL;
+    break;
+
+  case TOKEN_UNARY_MINUS:
+  case TOKEN_UNARY_PLUS:
+  case TOKEN_SIN:
+  case TOKEN_COS:
+  case TOKEN_LOG:
+    cloneNode->unary.operand = cloneAST(node->unary.operand, psr);
+    if (!cloneNode->unary.operand)
+      return NULL;
+    break;
+
+  case TOKEN_IDEN:
+    cloneNode->identifer = node->identifer;
+    break;
+
+  case TOKEN_NUMBER:
+    cloneNode->number = node->number;
+    break;
+
+  default:
+    return NULL;
+  }
+
+  return cloneNode;
+}
+
 static ASTNode *parseNumber(parser *psr) {
   char *numberLexeme = GET_CURRENT_TOKEN.lexeme.str;
   char *end;
@@ -58,18 +103,18 @@ static ASTNode *parseNumber(parser *psr) {
   }
 
   ASTNode *node = memPool_alloc(&psr->nodePool);
-  nodeInit(node, psr->tknStream->stream[psr->currentToken]);
+  nodeInit(node, GET_CURRENT_TOKEN);
   node->number = num;
   psr->currentToken++;
   return node;
 }
 
 static bool assignIdentifier(parser *psr) {
-  if (parsingAssignment) {
+  if (psr->parsingAssignment) {
     errno = NESTED_ASSIGNMENT;
     return false;
   }
-  parsingAssignment = true;
+  psr->parsingAssignment = true;
   substring key = GET_CURRENT_TOKEN.lexeme;
   psr->currentToken += 2; // skip identifier and assignment operator
 
@@ -78,15 +123,55 @@ static bool assignIdentifier(parser *psr) {
     return false;
 
   hashmap_setKey(&psr->map, key, value);
-  parsingAssignment = false;
+  psr->parsingAssignment = false;
   return true;
 }
 
-static ASTNode *parseIdentifier(parser *psr) {
-  substring key = GET_CURRENT_TOKEN.lexeme;
+static ASTNode *parseIdentifier(substring key, parser *psr);
+
+static bool substituteIdentifiers(ASTNode *node, parser *psr) {
+  switch (node->type) {
+  case TOKEN_PLUS:
+  case TOKEN_MINUS:
+  case TOKEN_MUL:
+  case TOKEN_DIV:
+  case TOKEN_EXP:
+    return substituteIdentifiers(node->binary.left, psr) &&
+           substituteIdentifiers(node->binary.right, psr);
+
+  case TOKEN_UNARY_MINUS:
+  case TOKEN_UNARY_PLUS:
+  case TOKEN_SIN:
+  case TOKEN_COS:
+  case TOKEN_LOG:
+    return substituteIdentifiers(node->unary.operand, psr);
+
+  case TOKEN_IDEN:
+    node->unary.operand = parseIdentifier(node->identifer, psr);
+    if (!node->unary.operand) {
+      return false;
+    }
+    return true;
+
+  case TOKEN_NUMBER:
+  default:
+    return true;
+  }
+}
+
+static ASTNode *parseIdentifier(substring key, parser *psr) {
   ASTNode *ret = hashMap_getValue(&psr->map, key);
-  psr->currentToken++;
-  return ret;
+  if (!ret) {
+    errno = UNKNOWN_IDENTIFIER;
+    return NULL;
+  }
+
+  ASTNode *identifierInstance = cloneAST(ret, psr);
+
+  if (!substituteIdentifiers(identifierInstance, psr))
+    return NULL;
+
+  return identifierInstance;
 }
 
 static ASTNode *parsePrefixExpression(parser *psr) {
@@ -105,13 +190,24 @@ static ASTNode *parsePrefixExpression(parser *psr) {
 
   if (GET_CURRENT_TOKEN.type == TOKEN_NUMBER)
     ret = parseNumber(psr); // Returns NULL for UNDERFLOW and OVERFLOW
+
   else if (GET_CURRENT_TOKEN.type == TOKEN_IDEN) {
-    ret = parseIdentifier(psr);
+    if (psr->parsingAssignment) {
+      ret = memPool_alloc(&psr->nodePool);
+      nodeInit(ret, GET_CURRENT_TOKEN);
+      ret->identifer = GET_CURRENT_TOKEN.lexeme;
+      psr->currentToken++;
+      return ret;
+    }
+
+    substring identifer_lexeme = GET_CURRENT_TOKEN.lexeme;
+    ret = parseIdentifier(identifer_lexeme, psr);
+    psr->currentToken++;
   }
 
   else if (GET_CURRENT_TOKEN.type == TOKEN_OPENPAREN) {
     size_t openingParenthesisPosition = psr->currentToken;
-    unmatchedParanthesisCount++;
+    psr->unmatchedParanthesisCount++;
     psr->currentToken++;
 
     if (GET_CURRENT_TOKEN.type == TOKEN_IDEN &&
@@ -136,7 +232,7 @@ static ASTNode *parsePrefixExpression(parser *psr) {
     }
 
     if (GET_CURRENT_TOKEN.type == TOKEN_CLOSEPAREN) {
-      unmatchedParanthesisCount--;
+      psr->unmatchedParanthesisCount--;
       psr->currentToken++;
     }
 
@@ -186,7 +282,7 @@ ASTNode *parseExpression(parser *psr) {
           ? PRECEDENCE_MIN
           : precedenceMap[GET_TOKEN(psr->currentToken - 1).type];
 
-  ASTNode *left;
+  ASTNode *left = NULL;
 
   // Multiple assignments might be present.
   // Assignments don't have anything to expression structure.
@@ -196,6 +292,9 @@ ASTNode *parseExpression(parser *psr) {
 
     if (errorAlreadyReported || !left || left->type != TOKEN_ASSIGNMENT)
       break;
+
+    // TOKEN_ASSIGNMENT isn't needed
+    psr->nodePool.used--;
   }
 
   if (errorAlreadyReported)
@@ -227,7 +326,7 @@ ASTNode *parseExpression(parser *psr) {
       currentOperator.type == TOKEN_OPENPAREN) {
     errno = MISSING_OPERATOR;
   } else if (currentOperator.type == TOKEN_CLOSEPAREN) {
-    if (unmatchedParanthesisCount != 0) {
+    if (psr->unmatchedParanthesisCount != 0) {
       // return back to the unary expression handling function
       return left;
     }
