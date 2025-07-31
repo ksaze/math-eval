@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "ds.h"
+#include "eval.h"
 #include "lexer.h"
 #include "util.h"
 
@@ -38,11 +39,11 @@ static inline void nodeInit(ASTNode *node, token tkn) {
   node->pos = tkn.pos;
 }
 
-static inline ASTNode *cloneAST(ASTNode *node, parser *psr) {
+static inline ASTNode *cloneAST(ASTNode *node, memPool *tempAlloc) {
   if (!node)
     return NULL;
 
-  ASTNode *cloneNode = memPool_alloc(&psr->nodePool);
+  ASTNode *cloneNode = memPool_alloc(tempAlloc);
   if (!cloneNode)
     return NULL;
 
@@ -55,8 +56,8 @@ static inline ASTNode *cloneAST(ASTNode *node, parser *psr) {
   case TOKEN_MUL:
   case TOKEN_DIV:
   case TOKEN_EXP:
-    cloneNode->binary.left = cloneAST(node->binary.left, psr);
-    cloneNode->binary.right = cloneAST(node->binary.right, psr);
+    cloneNode->binary.left = cloneAST(node->binary.left, tempAlloc);
+    cloneNode->binary.right = cloneAST(node->binary.right, tempAlloc);
     if (!cloneNode->binary.left || !cloneNode->binary.right)
       return NULL;
     break;
@@ -66,7 +67,7 @@ static inline ASTNode *cloneAST(ASTNode *node, parser *psr) {
   case TOKEN_SIN:
   case TOKEN_COS:
   case TOKEN_LOG:
-    cloneNode->unary.operand = cloneAST(node->unary.operand, psr);
+    cloneNode->unary.operand = cloneAST(node->unary.operand, tempAlloc);
     if (!cloneNode->unary.operand)
       return NULL;
     break;
@@ -118,16 +119,20 @@ static bool assignIdentifier(parser *psr) {
   substring key = GET_CURRENT_TOKEN.lexeme;
   psr->currentToken += 2; // skip identifier and assignment operator
 
+  size_t nodeCountBefore = psr->nodePool.used;
+
   ASTNode *value = parseExpression(psr);
   if (!value)
     return false;
 
-  hashmap_setKey(&psr->map, key, value);
+  size_t identiferTreeSize = psr->nodePool.used - nodeCountBefore;
+
+  hashmap_setKey(&psr->map, key, value, identiferTreeSize);
   psr->parsingAssignment = false;
   return true;
 }
 
-static ASTNode *parseIdentifier(substring key, parser *psr);
+static double parseIdentifier(substring key, parser *psr);
 
 static bool substituteIdentifiers(ASTNode *node, parser *psr) {
   switch (node->type) {
@@ -146,12 +151,14 @@ static bool substituteIdentifiers(ASTNode *node, parser *psr) {
   case TOKEN_LOG:
     return substituteIdentifiers(node->unary.operand, psr);
 
-  case TOKEN_IDEN:
-    node->unary.operand = parseIdentifier(node->identifer, psr);
-    if (!node->unary.operand) {
+  case TOKEN_IDEN: {
+    double value = parseIdentifier(node->identifer, psr);
+    if (value != value) // check for nan
       return false;
-    }
+    node->type = TOKEN_NUMBER;
+    node->number = value;
     return true;
+  }
 
   case TOKEN_NUMBER:
   default:
@@ -159,19 +166,26 @@ static bool substituteIdentifiers(ASTNode *node, parser *psr) {
   }
 }
 
-static ASTNode *parseIdentifier(substring key, parser *psr) {
-  ASTNode *ret = hashMap_getValue(&psr->map, key);
+static double parseIdentifier(substring key, parser *psr) {
+  size_t identiferTreeSize;
+  ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize);
   if (!ret) {
     errno = UNKNOWN_IDENTIFIER;
-    return NULL;
+    return nan("unknown identifier");
   }
 
-  ASTNode *identifierInstance = cloneAST(ret, psr);
+  memPool tempAlloc = {0};
+  memPool_init(&tempAlloc, identiferTreeSize);
 
+  ASTNode *identifierInstance = cloneAST(ret, &tempAlloc);
   if (!substituteIdentifiers(identifierInstance, psr))
-    return NULL;
+    return nan("Substitution failed");
 
-  return identifierInstance;
+  double value = eval(identifierInstance);
+
+  memPool_free(&tempAlloc);
+
+  return value;
 }
 
 static ASTNode *parsePrefixExpression(parser *psr) {
@@ -201,7 +215,11 @@ static ASTNode *parsePrefixExpression(parser *psr) {
     }
 
     substring identifer_lexeme = GET_CURRENT_TOKEN.lexeme;
-    ret = parseIdentifier(identifer_lexeme, psr);
+    double value = parseIdentifier(identifer_lexeme, psr);
+    ret = memPool_alloc(&psr->nodePool);
+    nodeInit(ret, GET_CURRENT_TOKEN);
+    ret->number = value;
+    ret->type = TOKEN_NUMBER;
     psr->currentToken++;
   }
 

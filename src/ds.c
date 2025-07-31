@@ -12,12 +12,12 @@ bool substringCmp(substring s1, substring s2) {
 
 /*--MEMORY POOl--*/
 bool memPool_init(memPool *pool, size_t capacity) {
-  pool->nodes = malloc(sizeof(ASTNode) * (capacity * 2));
+  pool->nodes = malloc(sizeof(ASTNode) * (capacity));
   if (!pool->nodes) {
     return false;
   }
 
-  pool->capacity = capacity * 2;
+  pool->capacity = capacity;
   pool->used = 0;
   return true;
 }
@@ -46,7 +46,8 @@ static inline size_t hash(substring key) {
   return h;
 }
 
-static inline entry *entryInit(const substring key, ASTNode *value) {
+static inline entry *entryInit(const substring key, ASTNode *value,
+                               size_t treeSize) {
   entry *e = malloc(sizeof(entry));
   if (!e)
     return NULL;
@@ -54,6 +55,7 @@ static inline entry *entryInit(const substring key, ASTNode *value) {
   *e = (entry){
       .key = key,
       .value = value,
+      .treeSize = treeSize,
       .next = NULL,
   };
 
@@ -66,7 +68,8 @@ hashMap *hashMap_init(hashMap *map, size_t size) {
   return map;
 }
 
-bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value) {
+bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
+                    size_t treeSize) {
   size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
@@ -78,7 +81,7 @@ bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value) {
     cur = cur->next;
   }
 
-  entry *entry = entryInit(key, value);
+  entry *entry = entryInit(key, value, treeSize);
   if (!entry) {
     return false;
   }
@@ -87,12 +90,14 @@ bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value) {
   return true;
 }
 
-ASTNode *hashMap_getValue(const hashMap *map, const substring key) {
+ASTNode *hashMap_getValue(const hashMap *map, const substring key,
+                          size_t *treeSize) {
   size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
   while (cur) {
     if (substringCmp(cur->key, key)) {
+      *treeSize = cur->treeSize;
       return cur->value;
     }
     cur = cur->next;
