@@ -123,6 +123,13 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
              "position %zu.\n",
              (int)tkn->lexeme.len, tkn->lexeme.str, tkn->pos);
     break;
+  case MAXIMUM_RECURSION_DEPTH:
+    snprintf(buffer, bufferSize,
+             "Maximum Recursion Depth: Reached maximum recursion depth while "
+             "evaluating identifier '%.*s' at "
+             "position %zu.\n",
+             (int)tkn->lexeme.len, tkn->lexeme.str, tkn->pos);
+    break;
   default:
     printf("Error code: %d", errno);
     snprintf(buffer, bufferSize,

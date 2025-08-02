@@ -19,6 +19,7 @@ enum {
   INVALID_ASSIGNMENT_SYNTAX,
   NESTED_ASSIGNMENT,
   UNKNOWN_IDENTIFIER,
+  MAXIMUM_RECURSION_DEPTH,
 };
 
 void logError(const char *message, const char *functionName);

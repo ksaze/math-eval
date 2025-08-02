@@ -167,6 +167,11 @@ static bool substituteIdentifiers(ASTNode *node, parser *psr) {
 }
 
 static double parseIdentifier(substring key, parser *psr) {
+  if (++psr->recursionDepth >= 100) {
+    errno = MAXIMUM_RECURSION_DEPTH;
+    return nan("Maximum Recursion Depth");
+  }
+
   size_t identiferTreeSize;
   ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize);
   if (!ret) {
@@ -178,9 +183,10 @@ static double parseIdentifier(substring key, parser *psr) {
   memPool_init(&tempAlloc, identiferTreeSize);
 
   ASTNode *identifierInstance = cloneAST(ret, &tempAlloc);
-  if (!substituteIdentifiers(identifierInstance, psr))
+  if (!substituteIdentifiers(identifierInstance, psr)) {
+    memPool_free(&tempAlloc);
     return nan("Substitution failed");
-
+  }
   double value = eval(identifierInstance);
 
   memPool_free(&tempAlloc);
@@ -205,8 +211,9 @@ static ASTNode *parsePrefixExpression(parser *psr) {
   if (GET_CURRENT_TOKEN.type == TOKEN_NUMBER)
     ret = parseNumber(psr); // Returns NULL for UNDERFLOW and OVERFLOW
 
-  else if (GET_CURRENT_TOKEN.type == TOKEN_IDEN) {
-    if (psr->parsingAssignment) {
+  else if (GET_CURRENT_TOKEN.type == TOKEN_IDEN ||
+           GET_CURRENT_TOKEN.type == TOKEN_MUL) {
+    if (psr->parsingAssignment && GET_CURRENT_TOKEN.type == TOKEN_IDEN) {
       ret = memPool_alloc(&psr->nodePool);
       nodeInit(ret, GET_CURRENT_TOKEN);
       ret->identifer = GET_CURRENT_TOKEN.lexeme;
@@ -214,8 +221,21 @@ static ASTNode *parsePrefixExpression(parser *psr) {
       return ret;
     }
 
+    if (GET_CURRENT_TOKEN.type == TOKEN_MUL) {
+      if (GET_TOKEN(psr->currentToken + 1).type != TOKEN_IDEN) {
+        errno = INVALID_OPERAND;
+        return NULL;
+      }
+      psr->currentToken++;
+    }
+
+    psr->recursionDepth = 0;
     substring identifer_lexeme = GET_CURRENT_TOKEN.lexeme;
     double value = parseIdentifier(identifer_lexeme, psr);
+
+    if (value != value)
+      return NULL;
+
     ret = memPool_alloc(&psr->nodePool);
     nodeInit(ret, GET_CURRENT_TOKEN);
     ret->number = value;

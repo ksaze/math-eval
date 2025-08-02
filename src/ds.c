@@ -76,6 +76,7 @@ bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
   while (cur) {
     if (substringCmp(cur->key, key)) {
       cur->value = value;
+      cur->treeSize = treeSize;
       return true;
     }
     cur = cur->next;
