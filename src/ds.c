@@ -47,7 +47,7 @@ static inline size_t hash(substring key) {
 }
 
 static inline entry *entryInit(const substring key, ASTNode *value,
-                               size_t treeSize) {
+                               size_t treeSize, size_t declarationStartIndex) {
   entry *e = malloc(sizeof(entry));
   if (!e)
     return NULL;
@@ -56,6 +56,7 @@ static inline entry *entryInit(const substring key, ASTNode *value,
       .key = key,
       .value = value,
       .treeSize = treeSize,
+      .declarationStartIndex = declarationStartIndex,
       .next = NULL,
   };
 
@@ -69,7 +70,7 @@ hashMap *hashMap_init(hashMap *map, size_t size) {
 }
 
 bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
-                    size_t treeSize) {
+                    size_t treeSize, size_t declarationStartIndex) {
   size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
@@ -77,12 +78,13 @@ bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
     if (substringCmp(cur->key, key)) {
       cur->value = value;
       cur->treeSize = treeSize;
+      cur->declarationStartIndex = declarationStartIndex;
       return true;
     }
     cur = cur->next;
   }
 
-  entry *entry = entryInit(key, value, treeSize);
+  entry *entry = entryInit(key, value, treeSize, declarationStartIndex);
   if (!entry) {
     return false;
   }
@@ -92,13 +94,14 @@ bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
 }
 
 ASTNode *hashMap_getValue(const hashMap *map, const substring key,
-                          size_t *treeSize) {
+                          size_t *treeSize, size_t *declarationStartIndex) {
   size_t idx = hash(key) % map->size;
   entry *cur = map->buckets[idx];
 
   while (cur) {
     if (substringCmp(cur->key, key)) {
       *treeSize = cur->treeSize;
+      *declarationStartIndex = cur->declarationStartIndex;
       return cur->value;
     }
     cur = cur->next;

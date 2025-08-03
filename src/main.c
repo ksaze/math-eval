@@ -74,12 +74,10 @@ int main(int argc, char **argv) {
 
   const char *userInput = argv[1];
 
-  // Read config file
   char *configContent = readConfigFile("config.txt");
   if (errno)
     return -1;
 
-  // Create combined input string
   char *input = createCombinedInput(configContent, userInput);
   if (!input) {
     logError("Fatal: Memory allocation failure for input string", "main");
@@ -87,7 +85,6 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  // Tokenize the combined input
   tokenStream *tknStream = tokenise(input);
   if (!tknStream) {
     free(configContent);

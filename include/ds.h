@@ -9,6 +9,7 @@ typedef struct substring {
 } substring;
 
 typedef struct ASTNode ASTNode;
+typedef struct tokenStream tokenStream;
 
 typedef struct memPool {
   ASTNode *nodes;
@@ -25,6 +26,7 @@ typedef struct entry {
   substring key;
   ASTNode *value;
   size_t treeSize;
+  size_t declarationStartIndex;
   struct entry *next;
 } entry;
 
@@ -35,9 +37,9 @@ typedef struct hashMap {
 
 hashMap *hashMap_init(hashMap *map, size_t size);
 bool hashmap_setKey(hashMap *map, const substring key, ASTNode *value,
-                    size_t treeSize);
+                    size_t treeSize, size_t declarationStartIndex);
 ASTNode *hashMap_getValue(const hashMap *map, const substring key,
-                          size_t *treeSize);
+                          size_t *treeSize, size_t *declaratonStartIndex);
 void hashMap_free(hashMap *map);
 
 #endif

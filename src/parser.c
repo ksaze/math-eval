@@ -13,6 +13,12 @@
 
 #define GET_CURRENT_TOKEN psr->tknStream->stream[psr->currentToken]
 #define GET_TOKEN(t) psr->tknStream->stream[t]
+#define ASSIGNMENT_CONTEXT                                                     \
+  GET_CURRENT_TOKEN.type ==                                                    \
+      TOKEN_OPENPAREN &&GET_TOKEN(psr->currentToken + 1).type ==               \
+      TOKEN_IDEN &&GET_TOKEN(psr -> currentToken + 2).type == TOKEN_ASSIGNMENT
+
+static ASTNode *parsePrefixExpression(parser *psr);
 
 static precedence precedenceMap[TOKEN_MAX] = {
     [TOKEN_PLUS] = PRECEDENCE_TERM,     [TOKEN_MINUS] = PRECEDENCE_TERM,
@@ -115,9 +121,38 @@ static bool assignIdentifier(parser *psr) {
     errno = NESTED_ASSIGNMENT;
     return false;
   }
+
   psr->parsingAssignment = true;
   substring key = GET_CURRENT_TOKEN.lexeme;
   psr->currentToken += 2; // skip identifier and assignment operator
+
+  size_t declarationStartIndex = psr->currentToken;
+  while (ASSIGNMENT_CONTEXT) {
+    int paranthesisCount = psr->unmatchedParanthesisCount;
+    psr->currentToken++;
+    psr->unmatchedParanthesisCount++;
+    while (psr->unmatchedParanthesisCount != paranthesisCount) {
+      switch (GET_CURRENT_TOKEN.type) {
+      case TOKEN_EOF:
+        errno = PREMATURE_END_OF_EXPRESSION;
+        return false;
+
+      case TOKEN_OPENPAREN:
+        psr->unmatchedParanthesisCount++;
+        psr->currentToken++;
+        break;
+
+      case TOKEN_CLOSEPAREN:
+        psr->unmatchedParanthesisCount--;
+        psr->currentToken++;
+        break;
+
+      default:
+        psr->currentToken++;
+        break;
+      }
+    }
+  }
 
   size_t nodeCountBefore = psr->nodePool.used;
 
@@ -127,7 +162,8 @@ static bool assignIdentifier(parser *psr) {
 
   size_t identiferTreeSize = psr->nodePool.used - nodeCountBefore;
 
-  hashmap_setKey(&psr->map, key, value, identiferTreeSize);
+  hashmap_setKey(&psr->map, key, value, identiferTreeSize,
+                 declarationStartIndex);
   psr->parsingAssignment = false;
   return true;
 }
@@ -173,7 +209,17 @@ static double parseIdentifier(substring key, parser *psr) {
   }
 
   size_t identiferTreeSize;
-  ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize);
+  size_t declarationStartIndex;
+  ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize,
+                                  &declarationStartIndex);
+
+  size_t returnIndex = psr->currentToken;
+  psr->currentToken = declarationStartIndex;
+  while (ASSIGNMENT_CONTEXT) {
+    parsePrefixExpression(psr);
+  }
+  psr->currentToken = returnIndex;
+
   if (!ret) {
     errno = UNKNOWN_IDENTIFIER;
     return nan("unknown identifier");
@@ -199,6 +245,12 @@ static ASTNode *parsePrefixExpression(parser *psr) {
 
   if (GET_CURRENT_TOKEN.type == TOKEN_EOF ||
       GET_CURRENT_TOKEN.type == TOKEN_CLOSEPAREN) {
+    if (psr->currentToken == 0 ||
+        GET_TOKEN(psr->currentToken - 1).type == TOKEN_CLOSEPAREN) {
+      errno = MISSING_EXPRESSION;
+      return NULL;
+    }
+
     errno = PREMATURE_END_OF_EXPRESSION;
     return NULL;
   }
@@ -349,9 +401,7 @@ ASTNode *parseExpression(parser *psr) {
   }
 
   // Handle possible identifier declaration
-  while (GET_CURRENT_TOKEN.type == TOKEN_OPENPAREN &&
-         GET_TOKEN(psr->currentToken + 1).type == TOKEN_IDEN &&
-         GET_TOKEN(psr->currentToken + 2).type == TOKEN_ASSIGNMENT) {
+  while (ASSIGNMENT_CONTEXT) {
     parsePrefixExpression(psr);
   }
 

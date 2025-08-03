@@ -103,7 +103,12 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
              "resolving required operand\n",
              tkn->pos - configLen);
     break;
-
+  case MISSING_EXPRESSION:
+    snprintf(buffer, bufferSize,
+             "Missing Sub-expression: Expression ended at %zu without "
+             "providing any evaluable content.\n",
+             tkn->pos - configLen);
+    break;
   case INVALID_ASSIGNMENT_SYNTAX:
     snprintf(buffer, bufferSize,
              "Invalid Syntax: Invalid use of assignment operator at position "
