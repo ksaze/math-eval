@@ -130,6 +130,13 @@ void createErrorMessage(char *buffer, size_t bufferSize, const token *tkn) {
              "position %zu.\n",
              (int)tkn->lexeme.len, tkn->lexeme.str, tkn->pos - configLen);
     break;
+  case UNDEFINED_REFERENCE:
+    snprintf(
+        buffer, bufferSize,
+        "Unknown Identifier: Found no valid definition for reference '%.*s'\n",
+        (int)tkn->lexeme.len, tkn->lexeme.str);
+    break;
+
   case MAXIMUM_RECURSION_DEPTH:
     snprintf(buffer, bufferSize,
              "Maximum Recursion Depth: Reached maximum recursion depth while "

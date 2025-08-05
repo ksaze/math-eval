@@ -35,7 +35,7 @@ typedef struct parser {
   memPool nodePool;
   size_t currentToken;
   int unmatchedParanthesisCount;
-  int recursionDepth;
+  size_t recursionDepth;
   bool parsingAssignment;
   tokenStream *tknStream;
   hashMap map;

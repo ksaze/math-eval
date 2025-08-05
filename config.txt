@@ -1,11 +1,11 @@
-(max_depth = 100)
-
 (true = 1)
 (false = 0)
 
 (bool = 
   (pred*pred) / (pred*pred + 1e-20)
 )
+
+(pred = n)
 
 (cond = 
   bool*true + (1-bool)*false

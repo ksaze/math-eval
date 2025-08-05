@@ -109,7 +109,6 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  // Parse and evaluate
   ASTNode *root = parseExpression(&psr);
   if (!root) {
     free(configContent);
@@ -124,7 +123,6 @@ int main(int argc, char **argv) {
   double result = eval(root);
   printf("%.15g\n", result);
 
-  // Cleanup
   free(configContent);
   free(input);
   free(tknStream->stream);

@@ -7,16 +7,17 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define GET_CURRENT_TOKEN psr->tknStream->stream[psr->currentToken]
 #define GET_TOKEN(t) psr->tknStream->stream[t]
 #define ASSIGNMENT_CONTEXT                                                     \
-  GET_CURRENT_TOKEN.type ==                                                    \
-      TOKEN_OPENPAREN &&GET_TOKEN(psr->currentToken + 1).type ==               \
-      TOKEN_IDEN &&GET_TOKEN(psr -> currentToken + 2).type == TOKEN_ASSIGNMENT
+  ((psr->currentToken + 3) <= psr->tknStream->count) &&                        \
+      GET_CURRENT_TOKEN.type ==                                                \
+          TOKEN_OPENPAREN &&GET_TOKEN(psr->currentToken + 1).type ==           \
+          TOKEN_IDEN &&GET_TOKEN(psr -> currentToken + 2).type ==              \
+          TOKEN_ASSIGNMENT
 
 static ASTNode *parsePrefixExpression(parser *psr);
 
@@ -116,6 +117,85 @@ static ASTNode *parseNumber(parser *psr) {
   return node;
 }
 
+static double parseIdentifier(substring key, parser *psr);
+
+static bool substituteIdentifiers(ASTNode *node, parser *psr) {
+  switch (node->type) {
+  case TOKEN_PLUS:
+  case TOKEN_MINUS:
+  case TOKEN_MUL:
+  case TOKEN_DIV:
+  case TOKEN_EXP:
+    return substituteIdentifiers(node->binary.left, psr) &&
+           substituteIdentifiers(node->binary.right, psr);
+
+  case TOKEN_UNARY_MINUS:
+  case TOKEN_UNARY_PLUS:
+  case TOKEN_SIN:
+  case TOKEN_COS:
+  case TOKEN_LOG:
+    return substituteIdentifiers(node->unary.operand, psr);
+
+  case TOKEN_IDEN: {
+    double value = parseIdentifier(node->identifer, psr);
+    if (value != value) { // check for nan
+      errno = UNDEFINED_REFERENCE;
+      token tmp = {0};
+      tmp.lexeme = node->identifer;
+      char buffer[256];
+      createErrorMessage(buffer, sizeof(buffer), &tmp);
+      logError(buffer, __func__);
+      return false;
+    }
+    node->type = TOKEN_NUMBER;
+    node->number = value;
+    return true;
+  }
+
+  case TOKEN_NUMBER:
+  default:
+    return true;
+  }
+}
+
+static double parseIdentifier(substring key, parser *psr) {
+  if (++psr->recursionDepth >= 100) {
+    errno = MAXIMUM_RECURSION_DEPTH;
+    return nan("Maximum Recursion Depth");
+  }
+
+  size_t identiferTreeSize;
+  size_t declarationStartIndex;
+  ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize,
+                                  &declarationStartIndex);
+
+  if (declarationStartIndex) {
+    size_t returnIndex = psr->currentToken;
+    psr->currentToken = declarationStartIndex;
+    while (ASSIGNMENT_CONTEXT) {
+      parsePrefixExpression(psr);
+    }
+    psr->currentToken = returnIndex;
+  }
+
+  if (!ret) {
+    errno = UNKNOWN_IDENTIFIER;
+    return nan("unknown identifier");
+  }
+
+  memPool tempAlloc = {0};
+  memPool_init(&tempAlloc, identiferTreeSize);
+
+  ASTNode *identifierInstance = cloneAST(ret, &tempAlloc);
+  if (!substituteIdentifiers(identifierInstance, psr)) {
+    memPool_free(&tempAlloc);
+    return nan("Substitution failed");
+  }
+  double value = eval(identifierInstance);
+  memPool_free(&tempAlloc);
+
+  return value;
+}
 static bool assignIdentifier(parser *psr) {
   if (psr->parsingAssignment) {
     errno = NESTED_ASSIGNMENT;
@@ -154,6 +234,9 @@ static bool assignIdentifier(parser *psr) {
     }
   }
 
+  if (psr->currentToken == declarationStartIndex)
+    declarationStartIndex = 0;
+
   size_t nodeCountBefore = psr->nodePool.used;
 
   ASTNode *value = parseExpression(psr);
@@ -166,78 +249,6 @@ static bool assignIdentifier(parser *psr) {
                  declarationStartIndex);
   psr->parsingAssignment = false;
   return true;
-}
-
-static double parseIdentifier(substring key, parser *psr);
-
-static bool substituteIdentifiers(ASTNode *node, parser *psr) {
-  switch (node->type) {
-  case TOKEN_PLUS:
-  case TOKEN_MINUS:
-  case TOKEN_MUL:
-  case TOKEN_DIV:
-  case TOKEN_EXP:
-    return substituteIdentifiers(node->binary.left, psr) &&
-           substituteIdentifiers(node->binary.right, psr);
-
-  case TOKEN_UNARY_MINUS:
-  case TOKEN_UNARY_PLUS:
-  case TOKEN_SIN:
-  case TOKEN_COS:
-  case TOKEN_LOG:
-    return substituteIdentifiers(node->unary.operand, psr);
-
-  case TOKEN_IDEN: {
-    double value = parseIdentifier(node->identifer, psr);
-    if (value != value) // check for nan
-      return false;
-    node->type = TOKEN_NUMBER;
-    node->number = value;
-    return true;
-  }
-
-  case TOKEN_NUMBER:
-  default:
-    return true;
-  }
-}
-
-static double parseIdentifier(substring key, parser *psr) {
-  if (++psr->recursionDepth >= 100) {
-    errno = MAXIMUM_RECURSION_DEPTH;
-    return nan("Maximum Recursion Depth");
-  }
-
-  size_t identiferTreeSize;
-  size_t declarationStartIndex;
-  ASTNode *ret = hashMap_getValue(&psr->map, key, &identiferTreeSize,
-                                  &declarationStartIndex);
-
-  size_t returnIndex = psr->currentToken;
-  psr->currentToken = declarationStartIndex;
-  while (ASSIGNMENT_CONTEXT) {
-    parsePrefixExpression(psr);
-  }
-  psr->currentToken = returnIndex;
-
-  if (!ret) {
-    errno = UNKNOWN_IDENTIFIER;
-    return nan("unknown identifier");
-  }
-
-  memPool tempAlloc = {0};
-  memPool_init(&tempAlloc, identiferTreeSize);
-
-  ASTNode *identifierInstance = cloneAST(ret, &tempAlloc);
-  if (!substituteIdentifiers(identifierInstance, psr)) {
-    memPool_free(&tempAlloc);
-    return nan("Substitution failed");
-  }
-  double value = eval(identifierInstance);
-
-  memPool_free(&tempAlloc);
-
-  return value;
 }
 
 static ASTNode *parsePrefixExpression(parser *psr) {
